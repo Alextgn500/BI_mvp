@@ -1,0 +1,25 @@
+[MASTER]
+ignore=__pycache__,.venv,build,dist
+init-hook='import sys; sys.path.append("app")'
+jobs=1
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods
+    W0511,  # fixme (TODO)
+    W0611,  # unused-import
+    E1101,  # no-member (часто у numpy/pandas/sklearn)
+    E0401   # import-error (если pylint не видит env / пути)
+
+[FORMAT]
+max-line-length=88
+
+[TYPECHECK]
+
+
+[REPORTS]
+output-format = text
+reports = no
