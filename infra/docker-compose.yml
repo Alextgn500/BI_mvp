@@ -1,0 +1,81 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: bi_postgres
+    environment:
+      POSTGRES_DB: bi_mvp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bi_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-django:
+    build: ../backend_django
+    container_name: bi_backend_django
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/bi_mvp
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=bi_mvp
+      - POSTGRES_USER=postgres
+      - DEBUG=True
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bi_network
+    volumes:
+      - ../backend_django:/app
+    command: >
+      sh -c "python manage.py migrate && 
+             python manage.py runserver 0.0.0.0:8000"
+
+  fastapi-ml:
+    build: ../fastapi_ml
+    container_name: bi_fastapi_ml
+    ports:
+      - "8001:8001"
+    environment:
+      - DJANGO_API_URL=http://backend-django:8000
+    depends_on:
+      - backend-django
+      - postgres
+    networks:
+      - bi_network
+    volumes:
+      - ../fastapi_ml:/app
+
+  frontend-streamlit:
+    build: ../frontend_streamlit
+    container_name: bi_frontend_streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - DJANGO_API_URL=http://backend-django:8000
+      - FASTAPI_ML_URL=http://fastapi-ml:8001
+    depends_on:
+      - backend-django
+      - fastapi-ml
+    restart: unless-stopped
+    networks:
+      - bi_network
+    volumes:
+      - ../frontend_streamlit:/app
+
+networks:
+  bi_network:
+    driver: bridge
+
+volumes:
+   postgres_data:      

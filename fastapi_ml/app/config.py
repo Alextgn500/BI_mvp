@@ -1,8 +1,12 @@
 """Конфигурация приложения."""
 
+import os
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (  # pylint: disable=import-error
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):
@@ -14,6 +18,10 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",  # ← ИГНОРИРОВАТЬ ЛИШНИЕ ПОЛЯ
     )
+    # Определение окружения
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    # "development" — локальный запуск
+    # "production" — Docker
 
     # Основные настройки
     APP_NAME: str = "FastAPI ML Service"
@@ -29,6 +37,8 @@ class Settings(BaseSettings):
 
     # API
     API_V1_PREFIX: str = "/api/v1"
+
+    DJANGO_API_URL: str = os.getenv("DJANGO_API_URL", "http://localhost:8000")
 
     # Логирование
     LOG_LEVEL: str = "INFO"

@@ -1,0 +1,56 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/staticfiles/
+/media/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+*.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# Docs
+*.md
+README*
+docs/
+
+# Scripts
+*.ps1
+*.sh
+run_projects.ps1
+
+# Model artifacts (большие файлы)
+*.pkl
+model_store/
+models_store/

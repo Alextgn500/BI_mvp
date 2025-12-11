@@ -1,0 +1,66 @@
+[MASTER]
+# Подключаем плагин для корректной работы с Django
+load-plugins=pylint_django
+
+# Укажите ваш модуль настроек Django
+django-settings-module=core.settings
+
+# Добавляем корень проекта в PYTHONPATH при запуске pylint (измените путь при необходимости)
+init-hook='import sys, os; sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "")))'
+
+# Если используете виртуальное окружение с нестандартными пакетами, можно добавить дополнительные пути:
+# init-hook='import sys; sys.path.insert(0, "/path/to/venv/lib/pythonX.Y/site-packages")'
+
+[MESSAGES CONTROL]
+# Минимально необходимые подавления для проектов Django.
+# Старайтесь по возможности удалять глобальные отключения и использовать локальные директивы.
+disable=
+    no-member,                      # ложные срабатывания на динамические атрибуты Django (ORM)
+    file-ignored                    # опционально: уведомление, что файл игнорируется
+
+# Не отключайте глобально полезные проверки:
+# - raw-checker-failed, bad-inline-option, deprecated-pragma, useless-suppression и т.п.
+# При необходимости подавляйте их локально с комментарием причины.
+
+[TYPECHECK]
+# Если у вас есть модули, которые Pylint неправильно анализирует, добавьте их сюда
+ignored-modules=
+    celery,                        # пример: сторонние библиотеки, которые можно игнорировать
+ignored-classes=
+
+[REPORTS]
+reports=no
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[DESIGN]
+# Увеличьте пределы, если проект содержит большие функции/классы
+max-args=10
+max-locals=30
+max-returns=10
+max-branches=20
+max-statements=200
+
+[LOGGING]
+# Если Pylint жалуется на логирование, можно настроить допустимые вызовы
+logging-modules=logging
+
+[MISCELLANEOUS]
+notes=FIXME,XXX,TODO
+
+[SIMILARITIES]
+min-similarity-lines=4
+
+[STRING]
+# Примеры правил, можно включать по вкусу
+check-str-concat-over-line-jumps=yes
+
+[REFACTORING]
+# Примеры, оставьте по умолчанию или настройте при необходимости
+
+[MASTER:MESSAGES CONTROL]
+# Пример локального подавления через комментарий в коде:
+# # pylint: disable=no-member  # reason: uses Django ORM dynamic attribute
+

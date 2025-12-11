@@ -1,0 +1,106 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bi_postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: bi_mvp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres123"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bi_mvp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - bi_network
+
+  backend-django:
+    build:
+      context: ../backend_django
+      dockerfile: Dockerfile
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
+    image: infra-backend_django
+    container_name: bi_backend_django
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DEBUG=True
+      - DJANGO_ALLOWED_HOSTS=backend_django,bi_backend_django,localhost,127.0.0.1
+      - POSTGRES_PORT=5432
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - FASTAPI_ML_URL=http://fastapi_ml:8001
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=bi_mvp
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+    depends_on:
+      -postgres
+        condition service_healthy
+    networks:
+      - bi_network
+
+  fastapi-ml:
+    build:
+      context: ../fastapi_ml
+      dockerfile: Dockerfile
+    container_name: bi_fastapi_ml
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/app
+    volumes:
+      - ml_models:/app/models
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_API_URL=http://backend-django:8000
+      - POSTGRES_HOST=postgres
+    restart: unless-stopped
+    stop_grace_period: 15s
+    stop_signal: SIGTERM
+    networks:
+      - bi_network
+    depends_on:
+      -backend-django
+      - postgres
+
+  frontend-streamlit:
+    build:
+      context: ../frontend_streamlit
+      dockerfile: Dockerfile
+    container_name: bi_frontend_streamlit
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_API_URL=http://backend-django:8000
+      - FASTAPI_ML_URL=http://fastapi-ml:8001
+    depends_on:
+      - backend-django
+      - fastapi-ml
+    restart: unless-stopped
+    networks:
+      - bi_network
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  ml_models:
+
+networks:
+  bi_network:
+    driver: bridge  

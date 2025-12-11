@@ -1,12 +1,11 @@
-"""API v1 endpoints."""
+"""API v1 роутеры."""
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import health, ml, sales
+from .health import router as health_router
+from .ml import router as ml_router
 
 api_router = APIRouter()
 
-# Подключаем все эндпоинты
-api_router.include_router(health.router, tags=["health"])
-api_router.include_router(sales.router, prefix="/sales", tags=["sales"])
-api_router.include_router(ml.router, prefix="/ml", tags=["ml"])
+api_router.include_router(health_router)
+api_router.include_router(ml_router)
