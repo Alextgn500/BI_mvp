@@ -28,6 +28,9 @@ ignored-modules=
     celery,                        # пример: сторонние библиотеки, которые можно игнорировать
 ignored-classes=
 
+generated-members=objects
+django-settings-module=backend_django.core.settings
+
 [REPORTS]
 reports=no
 
@@ -63,4 +66,3 @@ check-str-concat-over-line-jumps=yes
 [MASTER:MESSAGES CONTROL]
 # Пример локального подавления через комментарий в коде:
 # # pylint: disable=no-member  # reason: uses Django ORM dynamic attribute
-

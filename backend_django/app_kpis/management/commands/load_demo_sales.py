@@ -13,7 +13,7 @@ class Command(BaseCommand):
     """Создаёт демонстрационные данные продаж.
 
     Использование:
-        python manage.py load_demo_sales --count 100 --days 90
+        python manage.py load_demo_sales --count 600 --days 90
     """
 
     help = "Загружает демо-данные продаж"
@@ -46,7 +46,7 @@ class Command(BaseCommand):
         old_count = Sale.objects.count()  # pylint: disable=no-member
         if old_count > 0:
             self.stdout.write(
-                self.style.WARNING( # pylint: disable=no-member
+                self.style.WARNING(  # pylint: disable=no-member
                     f"В таблице уже есть {old_count} записей. Они будут сохранены."
                 )
             )
@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"  Подготовлено {i + 1}/{count} записей...")
 
         # Массовая вставка в БД
-        Sale.objects.bulk_create( # pylint: disable=no-member
+        Sale.objects.bulk_create(  # pylint: disable=no-member
             sales_to_create, batch_size=500
         )  # pylint: disable=no-member
 
