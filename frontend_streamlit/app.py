@@ -180,7 +180,9 @@ with col2:
 if train_button:
     with st.spinner("⏳ Обучение модели... Это может занять несколько минут."):
         try:
-            train_response = requests.post(f"{FASTAPI_ML_URL}/api/v1/ml/train", timeout=120)
+            train_response = requests.post(
+                f"{FASTAPI_ML_URL}/api/v1/ml/train", timeout=120
+            )
 
             if train_response.status_code == 200:
                 result = train_response.json()

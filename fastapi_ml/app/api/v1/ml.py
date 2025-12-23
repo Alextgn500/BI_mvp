@@ -1,5 +1,8 @@
 """ML endpoints для обучения и прогнозирования."""
 
+import logging
+import pickle
+from contextlib import contextmanager
 from pathlib import Path
 
 import joblib
@@ -39,90 +42,141 @@ class TrainResponse(BaseModel):
     date_range: dict
 
 
+@contextmanager
+def suppress_logs():
+    """Подавляет многословные логи Prophet"""
+    prophet_logger = logging.getLogger("prophet")
+    old_level = prophet_logger.level
+    prophet_logger.setLevel(logging.WARNING)
+    try:
+        yield
+    finally:
+        prophet_logger.setLevel(old_level)
+
+
 @router.post("/train", response_model=TrainResponse)
 async def train_model():
     """Обучение модели Prophet на данных из Django."""
     try:
         logger.info("🎓 Начало обучения модели...")
 
-        # Получаем данные из Django
-        response = requests.get(f"{settings.DJANGO_API_URL}/api/sales/", timeout=10)
-        response.raise_for_status()
-        sales_data = response.json()
+        # ✅ Получаем ВСЕ данные со всех страниц
+        all_sales_data = []
+        page = 1
+        while True:
+            url = f"{settings.DJANGO_API_URL}/api/sales/?page={page}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            response_data = response.json()
 
-        if not sales_data:
+            if not response_data["results"]:
+                break
+
+            all_sales_data.extend(response_data["results"])
+            logger.info(f"📥 Страница {page}: {len(response_data['results'])} записей")
+
+            if not response_data.get("next"):
+                break
+            page += 1
+
+        if not all_sales_data:
             raise HTTPException(status_code=400, detail="Нет данных для обучения")
 
-        logger.info(f"📊 Получено {len(sales_data)} записей продаж")
-
-        # Добавляем логирование типа данных
-        logger.info(f"🔍 Тип данных: {type(sales_data)}")
-
-        # Логируем все записи
-        for i, record in enumerate(sales_data):
-            logger.info(f"📝 Запись {i}: {record}")
-            logger.info(
-                f"🔑 Ключи записи {i}: {list(record.keys()) if isinstance(record, dict) else 'НЕ СЛОВАРЬ!'}"
-            )
+        logger.info(f"📊 Всего получено {len(all_sales_data)} записей")
 
         # Преобразуем в DataFrame
-        df = pd.DataFrame(sales_data)
-        logger.info(f"📋 Колонки DataFrame: {df.columns.tolist()}")
-        logger.info(f"📄 Первые строки:\n{df.head()}")
+        df = pd.DataFrame(all_sales_data)
+        logger.info(f"📋 Доступные колонки: {df.columns.tolist()}")
 
-        # Проверяем наличие 'date'
-        if 'date' not in df.columns:
-            logger.error(
-                f"❌ Колонка 'date' отсутствует! Доступные: {df.columns.tolist()}"
+        # Проверяем наличие необходимых полей
+        if "date" not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Колонка 'date' отсутствует! Доступные: {df.columns.tolist()}",
             )
-            raise KeyError("date")
+        if "amount" not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Колонка 'amount' отсутствует. Доступные: {df.columns.tolist()}",
+            )
 
-        df["date"] = pd.to_datetime(df["date"])
-        logger.info(f"✅ Дата преобразована: {df['date'].dtype}")
+        # Подготовка данных для Prophet
+        prophet_df = pd.DataFrame(
+            {
+                "ds": pd.to_datetime(df["date"]),
+                "y": pd.to_numeric(
+                    df["amount"], errors="coerce"
+                ),  # ✅ На случай ошибок
+            }
+        )
+
+        # ✅ Удаляем NaN значения
+        prophet_df = prophet_df.dropna(subset=["y"])
 
         # Агрегируем продажи по дням
-        daily_sales = df.groupby("date")["amount"].sum().reset_index()
-        daily_sales.columns = ["ds", "y"]
+        prophet_df = prophet_df.groupby("ds").agg({"y": "sum"}).reset_index()
+        prophet_df = prophet_df.sort_values("ds")  # ✅ Важно для Prophet
 
-        logger.info(f"📈 Подготовлено {len(daily_sales)} дней для обучения")
+        logger.info(f"📊 Подготовлено {len(prophet_df)} дней для обучения")
+        logger.info(
+            f"📈 Диапазон дат: {prophet_df['ds'].min()} - {prophet_df['ds'].max()}"
+        )
+        logger.info(
+            f"💰 Сумма: min={prophet_df['y'].min()}, max={prophet_df['y'].max()}, avg={prophet_df['y'].mean():.2f}"
+        )
+
+        # ✅ Проверка минимального размера датасета
+        if len(prophet_df) < 30:  # Prophet работает лучше с >30 наблюдениями
+            logger.warning(f"⚠️ Мало данных: {len(prophet_df)} дней")
 
         # Обучаем модель
         model = Prophet(
             daily_seasonality=False,
             weekly_seasonality=True,
-            yearly_seasonality=True,
-            seasonality_mode="multiplicative",
-            interval_width=0.95,
+            yearly_seasonality=(
+                True if len(prophet_df) > 365 else False  # noqa: SIM210
+            ),  # ✅ Для года нужен год данных
             changepoint_prior_scale=0.05,
+            interval_width=0.95,
         )
-        model.fit(daily_sales)
+
+        logger.info("🔄 Начинаю обучение Prophet...")
+        with suppress_logs():  # ✅ Подавляет многословные логи Prophet  # noqa: F821
+            model.fit(prophet_df)
+        logger.info("✅ Обучение завершено")
 
         # Сохраняем модель
-        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump(model, MODEL_PATH)
-        logger.info(f"💾 Модель сохранена: {MODEL_PATH}")
+        model_path = Path("model_store/prophet_model.pkl")
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(model_path, "wb") as f:
+            pickle.dump(model, f)
+
+        logger.info(f"💾 Модель сохранена в {model_path}")
 
         return TrainResponse(
             message="Модель успешно обучена",
-            training_samples=len(daily_sales),
+            training_samples=len(prophet_df),
             date_range={
-                "start": daily_sales["ds"].min().strftime("%Y-%m-%d"),
-                "end": daily_sales["ds"].max().strftime("%Y-%m-%d"),
+                "start": prophet_df["ds"].min().isoformat(),
+                "end": prophet_df["ds"].max().isoformat(),
             },
         )
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"❌ Ошибка подключения к Django: {e}")
+        logger.error(f"❌ Ошибка запроса к Django: {e}")
         raise HTTPException(  # noqa: B904
             status_code=503, detail=f"Ошибка подключения к Django: {str(e)}"
         ) from e
 
-    except HTTPException:
-        # Пробрасываем HTTPException без изменений
-        raise
+    except KeyError as e:
+        logger.error(f"❌ Отсутствует колонка: {e}")
+        raise HTTPException(
+            status_code=400, detail=f"Отсутствует необходимое поле: {str(e)}"
+        ) from e
 
     except Exception as e:
-        logger.error(f"❌ Ошибка обучения: {e}")
+        logger.error(f"❌ Ошибка обучения: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка обучения: {str(e)}") from e
 
 

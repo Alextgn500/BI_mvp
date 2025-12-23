@@ -27,8 +27,8 @@ else:
         "backend-django",
         "backend_django",
         "bi_backend_django",
-        "*"
-        ]  # использовать только в dev
+        "*",
+    ]  # использовать только в dev
 
 # ✅ Отключить валидацию HTTP_HOST (для Docker)
 USE_X_FORWARDED_HOST = True
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "django_filters",
     "corsheaders",
     "app_kpis.apps.AppKpisConfig",
 ]
@@ -122,11 +123,11 @@ CORS_ALLOW_ALL_ORIGINS = True  # В режиме разработки разре
 
 # ✅ Для запросов между контейнерами отключить проверку CSRF
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://backend-django:8000',
-    'http://bi_backend_django:8000',
-    'http://localhost:8501',
-    'http://bi_backend_django'
+    "http://localhost:8000",
+    "http://backend-django:8000",
+    "http://bi_backend_django:8000",
+    "http://localhost:8501",
+    "http://bi_backend_django",
 ]
 
 # REST Framework

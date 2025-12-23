@@ -14,9 +14,10 @@ repos:
     rev: v1.13.0
     hooks:
       - id: mypy
-        additional_dependencies: 
+        additional_dependencies:
           - types-python-dateutil
-        args: [--ignore-missing-imports]
+          - types-requests
+        #args: [--ignore-missing-imports]
 
   # Базовые проверки
   - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -41,7 +41,7 @@ class DjangoAPIClient:
             base_url: Базовый URL Django API (по умолчанию из переменной окружения)
         """
         self.base_url = (
-            base_url or os.getenv("DJANGO_API_URL", "http://localhost:8000")
+            base_url or os.getenv("DJANGO_API_URL") or "http://localhost:8000"
         ).rstrip("/")
         self.timeout = int(os.getenv("API_TIMEOUT", "10"))
 
@@ -101,7 +101,7 @@ def get_django_api() -> DjangoAPIClient:
 def get_sales(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    shop: Optional[str] = None
+    shop: Optional[str] = None,
 ) -> pd.DataFrame:
     """Получение данных о продажах с фильтрацией
 
@@ -137,8 +137,6 @@ def get_sales(
         if shop:
             params["shop"] = shop
 
-
-    
         api = get_django_api()
         data = api.get("sales", params=params)
         df = pd.DataFrame(data)
@@ -159,7 +157,7 @@ def get_sales(
 def get_statistics(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    shop: Optional[str] = None
+    shop: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Получение сводной статистики по продажам
 
@@ -183,14 +181,14 @@ def get_statistics(
                 "total_amount": 0.0,
                 "total_sales": 0,
                 "avg_amount": 0.0,
-                "unique_shops": 0
+                "unique_shops": 0,
             }
 
         stats = {
             "total_amount": float(df["amount"].sum()),
             "total_sales": len(df),
             "avg_amount": float(df["amount"].mean()),
-            "unique_shops": df["shop"].nunique()
+            "unique_shops": df["shop"].nunique(),
         }
 
         logger.info(f"✅ Статистика рассчитана: {stats}")
@@ -203,14 +201,12 @@ def get_statistics(
             "total_amount": 0.0,
             "total_sales": 0,
             "avg_amount": 0.0,
-            "unique_shops": 0
+            "unique_shops": 0,
         }
 
 
 def get_top_shops(
-    limit: int = 10,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    limit: int = 10, start_date: Optional[str] = None, end_date: Optional[str] = None
 ) -> pd.DataFrame:
     """Получение топ магазинов по сумме продаж
 
@@ -228,22 +224,22 @@ def get_top_shops(
 
         if df.empty:
             return pd.DataFrame(
-                columns=[
-                    "shop",
-                    "total_amount",
-                    "sales_count",
-                    "avg_amount"])
+                columns=["shop", "total_amount", "sales_count", "avg_amount"]
+            )
 
         # Группировка по магазинам
-        top_shops = df.groupby("shop").agg(
-            total_amount=("amount", "sum"),
-            sales_count=("amount", "count"),
-            avg_amount=("amount", "mean")
-        ).reset_index()
+        top_shops = (
+            df.groupby("shop")
+            .agg(
+                total_amount=("amount", "sum"),
+                sales_count=("amount", "count"),
+                avg_amount=("amount", "mean"),
+            )
+            .reset_index()
+        )
 
         # Сортировка и ограничение
-        top_shops = top_shops.sort_values(
-            "total_amount", ascending=False).head(limit)
+        top_shops = top_shops.sort_values("total_amount", ascending=False).head(limit)
 
         logger.info(f"✅ Топ {len(top_shops)} магазинов получен")
         return top_shops
@@ -252,17 +248,14 @@ def get_top_shops(
         logger.error(f"❌ Ошибка получения топ магазинов: {e}")
         st.error(f"❌ Ошибка при получении топ магазинов: {e}")
         return pd.DataFrame(
-            columns=[
-                "shop",
-                "total_amount",
-                "sales_count",
-                "avg_amount"])
+            columns=["shop", "total_amount", "sales_count", "avg_amount"]
+        )
 
 
 def get_sales_by_date(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    shop: Optional[str] = None
+    shop: Optional[str] = None,
 ) -> pd.DataFrame:
     """Получение продаж, сгруппированных по датам
 
@@ -279,17 +272,14 @@ def get_sales_by_date(
         df = get_sales(start_date, end_date, shop)
 
         if df.empty:
-            return pd.DataFrame(
-                columns=[
-                    "date",
-                    "total_amount",
-                    "sales_count"])
+            return pd.DataFrame(columns=["date", "total_amount", "sales_count"])
 
         # Группировка по датам
-        sales_by_date = df.groupby("date").agg(
-            total_amount=("amount", "sum"),
-            sales_count=("amount", "count")
-        ).reset_index()
+        sales_by_date = (
+            df.groupby("date")
+            .agg(total_amount=("amount", "sum"), sales_count=("amount", "count"))
+            .reset_index()
+        )
 
         # Сортировка по дате
         sales_by_date = sales_by_date.sort_values("date")
@@ -340,13 +330,11 @@ def get_date_range() -> Dict[str, Any]:
         if df.empty or "date" not in df.columns:
             return {"min_date": None, "max_date": None}
 
-        date_range = {
-            "min_date": df["date"].min(),
-            "max_date": df["date"].max()
-        }
+        date_range = {"min_date": df["date"].min(), "max_date": df["date"].max()}
 
         logger.info(
-            f"✅ Диапазон дат: {date_range['min_date']} - {date_range['max_date']}")
+            f"✅ Диапазон дат: {date_range['min_date']} - {date_range['max_date']}"
+        )
         return date_range
 
     except Exception as e:

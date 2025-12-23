@@ -25,7 +25,7 @@ disable=
 [TYPECHECK]
 # Если у вас есть модули, которые Pylint неправильно анализирует, добавьте их сюда
 ignored-modules=
-    celery,                        # пример: сторонние библиотеки, которые можно игнорировать
+    celery, django_filters                        # пример: сторонние библиотеки, которые можно игнорировать
 ignored-classes=
 
 generated-members=objects

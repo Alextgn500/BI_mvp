@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: bi_mvp
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
+      POSTGRES_HOST: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -38,7 +39,7 @@ services:
     volumes:
       - ../backend_django:/app
     command: >
-      sh -c "python manage.py migrate && 
+      sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
 
   fastapi-ml:
@@ -63,6 +64,7 @@ services:
       - "8501:8501"
     environment:
       - DJANGO_API_URL=http://backend-django:8000
+      - API_TIMEOUT=30
       - FASTAPI_ML_URL=http://fastapi-ml:8001
     depends_on:
       - backend-django
@@ -78,4 +80,4 @@ networks:
     driver: bridge
 
 volumes:
-   postgres_data:      
+   postgres_data:

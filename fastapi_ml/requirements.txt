@@ -162,4 +162,3 @@ websockets==15.0.1
     # via uvicorn
 plotly>=5.18.0
 kaleido>=0.2.1
-

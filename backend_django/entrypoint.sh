@@ -30,5 +30,3 @@ python manage.py collectstatic --noinput --clear || true
 # Запускаем команду из CMD (gunicorn)
 echo "🚀 Запускаем Django сервер..."
 exec "$@"
-
-

@@ -4,9 +4,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Начальная миграция приложения app_kpis."""
+
     initial = True
 
-    dependencies = []
+    dependencies: list = []
 
     operations = [
         migrations.CreateModel(
